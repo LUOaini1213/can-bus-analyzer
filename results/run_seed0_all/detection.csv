@@ -1,0 +1,8 @@
+fault,injected,detected,recall
+drop,27,27,1.000
+delay,3,3,1.000
+range,3,3,1.000
+dlc,3,3,1.000
+counter,3,3,1.000
+checksum,3,3,1.000
+stuck,1,0,0.000

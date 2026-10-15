@@ -1,0 +1,19 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Regenerate results
+        run: |
+          rm -rf results
+          python -m canbus_analyzer all
+          python scripts/mutation_test.py
+      - name: README numbers must match regenerated results
+        run: python scripts/readme_check.py
+      - run: python -m pytest -q

@@ -1,0 +1,94 @@
+{
+  "seed": 0,
+  "faults": {
+    "drop_prob": 0.0,
+    "jitter_ms": 0.0,
+    "delay_n": 0,
+    "delay_frac": 0.4,
+    "range_n": 0,
+    "dlc_n": 0,
+    "counter_n": 0,
+    "checksum_n": 0,
+    "stuck_s": 0.0
+  },
+  "scenario": {
+    "seed": 0,
+    "duration_s": 9.0,
+    "v0_mps": 20.0,
+    "gap0_m": 42.06,
+    "lead_brake_t_s": 3.21,
+    "lead_decel_mps2": 8.32,
+    "dsu_proc_delay_ms": 20,
+    "brake_dead_ms": 80,
+    "brake_tau_s": 0.12,
+    "p_max": 400.0,
+    "ego_decel_max": 9.0,
+    "aeb_force_n": -6000.0
+  },
+  "frames_sent": 2490,
+  "frames_received": 2490,
+  "finding_counts": {},
+  "bus_load_pct": [
+    6.09,
+    7.41
+  ],
+  "latency_ms": {
+    "bus_request": 22.0,
+    "bus_pressure": 195.0,
+    "truth_request": 41.0,
+    "truth_pressure": 203.0
+  },
+  "truth": {
+    "ttc_cross_s": 5.063,
+    "request_s": 5.104,
+    "pressure_x_s": 5.266,
+    "collision": false,
+    "min_gap_m": 2.08
+  },
+  "detection": {
+    "drop": {
+      "injected": 0,
+      "detected": 0
+    },
+    "delay": {
+      "injected": 0,
+      "detected": 0
+    },
+    "range": {
+      "injected": 0,
+      "detected": 0
+    },
+    "dlc": {
+      "injected": 0,
+      "detected": 0
+    },
+    "counter": {
+      "injected": 0,
+      "detected": 0
+    },
+    "checksum": {
+      "injected": 0,
+      "detected": 0
+    },
+    "stuck": {
+      "injected": 0,
+      "detected": 0
+    }
+  },
+  "roundtrip": [
+    {
+      "format": "asc",
+      "written": 2490,
+      "read": 2490,
+      "ok": true,
+      "max_dt_us": 0.212
+    },
+    {
+      "format": "blf",
+      "written": 2490,
+      "read": 2490,
+      "ok": true,
+      "max_dt_us": 0.0
+    }
+  ]
+}

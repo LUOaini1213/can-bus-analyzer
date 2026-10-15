@@ -1,0 +1,101 @@
+{
+  "seed": 0,
+  "faults": {
+    "drop_prob": 0.01,
+    "jitter_ms": 1.0,
+    "delay_n": 3,
+    "delay_frac": 0.4,
+    "range_n": 3,
+    "dlc_n": 3,
+    "counter_n": 3,
+    "checksum_n": 3,
+    "stuck_s": 1.0
+  },
+  "scenario": {
+    "seed": 0,
+    "duration_s": 9.0,
+    "v0_mps": 20.0,
+    "gap0_m": 42.06,
+    "lead_brake_t_s": 3.21,
+    "lead_decel_mps2": 8.32,
+    "dsu_proc_delay_ms": 20,
+    "brake_dead_ms": 80,
+    "brake_tau_s": 0.12,
+    "p_max": 400.0,
+    "ego_decel_max": 9.0,
+    "aeb_force_n": -6000.0
+  },
+  "frames_sent": 2463,
+  "frames_received": 2463,
+  "finding_counts": {
+    "checksum": 3,
+    "counter": 6,
+    "dlc": 3,
+    "missing": 27,
+    "range": 3,
+    "timing": 145
+  },
+  "bus_load_pct": [
+    6.02,
+    7.33
+  ],
+  "latency_ms": {
+    "bus_request": 23.466,
+    "bus_pressure": 194.486,
+    "truth_request": 41.0,
+    "truth_pressure": 203.0
+  },
+  "truth": {
+    "ttc_cross_s": 5.063,
+    "request_s": 5.104,
+    "pressure_x_s": 5.266,
+    "collision": false,
+    "min_gap_m": 2.08
+  },
+  "detection": {
+    "drop": {
+      "injected": 27,
+      "detected": 27
+    },
+    "delay": {
+      "injected": 3,
+      "detected": 3
+    },
+    "range": {
+      "injected": 3,
+      "detected": 3
+    },
+    "dlc": {
+      "injected": 3,
+      "detected": 3
+    },
+    "counter": {
+      "injected": 3,
+      "detected": 3
+    },
+    "checksum": {
+      "injected": 3,
+      "detected": 3
+    },
+    "stuck": {
+      "injected": 1,
+      "detected": 0
+    }
+  },
+  "roundtrip": [
+    {
+      "format": "asc",
+      "written": 2463,
+      "read": 2463,
+      "ok": true,
+      "max_dt_us": 0.132
+    },
+    {
+      "format": "blf",
+      "written": 2463,
+      "read": 2463,
+      "ok": true,
+      "max_dt_us": 0.0
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+metric,bus_measured,ground_truth,error
+trigger_to_request_ms,22.000,41.000,-19.000
+trigger_to_pressure_ms,195.000,203.000,-8.000
