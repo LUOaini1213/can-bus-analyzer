@@ -19,6 +19,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 A = "canbus_analyzer/analyzer.py"
 D = "canbus_analyzer/dbcutil.py"
+F = "canbus_analyzer/aeb_function.py"
+K = "canbus_analyzer/function_kpi.py"
+X = "canbus_analyzer/function_matrix.py"
 
 # (id, file, original, mutated, description, equivalent_reason or None)
 MUTANTS = [
@@ -93,6 +96,68 @@ MUTANTS = [
      "rolling-counter detector disabled", None),
     ("M32", A, "    trigger = None\n    for t, dist, rel in lead:", "    trigger = None\n    for t, dist, rel in lead[1:]:",
      "latency trigger skips the first radar frame", None),
+    # ---- AEB function: state machine, supervision, KPI extraction, test cases ----
+    ("N01", F, "and i.ttc < c.ttc_fb_s,", "and i.ttc <= c.ttc_fb_s,",
+     "full-brake TTC threshold comparison (< -> <=)", None),
+    ("N02", F, "and not i.brake_pressed and i.ttc < c.ttc_fcw_s,",
+     "and not i.brake_pressed and i.ttc <= c.ttc_fcw_s,",
+     "warning TTC threshold comparison (< -> <=)", None),
+    ("N03", F, "return i.ttc is None or i.ttc >= threshold + c.ttc_hyst_s",
+     "return i.ttc is None or i.ttc >= threshold", "de-escalation without hysteresis", None),
+    ("N04", F, '"fcw_threat_gone": (lambda c, i, d: d >= c.fcw_min_dwell_s and _gone(',
+     '"fcw_threat_gone": (lambda c, i, d: _gone(', "FCW exit without minimum dwell", None),
+    ("N05", F, "and i.t - i.ok_since >= c.fault_recover_s,", ",",
+     "FAULT not latched (heals on the first valid task)", None),
+    ("N06", F, '    Transition("R04", _ON, S.FAULT, "input_fault"),\n', "",
+     "input fault ignored once the function is on", None),
+    ("N07", F, "            and i.gas_pct < c.gas_override_pct)", "            )",
+     "accelerator override does not inhibit activation", None),
+    ("N08", F, "and c.v_min_kph <= i.v_ego_kph <= c.v_max_kph", "and i.v_ego_kph <= c.v_max_kph",
+     "speed window ignores the lower bound", None),
+    ("N09", F, "_armed(c, i) and not i.brake_pressed and i.ttc", "_armed(c, i) and i.ttc",
+     "brake pedal does not suppress the warning", None),
+    ("N10", F, "if t - ref > spec.timeout_cycles * spec.period_s:",
+     "if t - ref >= spec.timeout_cycles * spec.period_s:", "timeout boundary (> -> >=)", None),
+    ("N11", F, "if st.consecutive_bad >= spec.e2e_max_consecutive:",
+     "if st.consecutive_bad > spec.e2e_max_consecutive:", "E2E error debounce off by one", None),
+    ("N12", F, "        st.consecutive_bad = 0\n        st.last_valid = t", "        st.last_valid = t",
+     "valid frame does not reset the E2E error count", None),
+    ("N13", F, "            st.bad_total += 1\n            return None",
+     "            st.bad_total += 1\n            st.last_valid = t\n            return None",
+     "invalid frames refresh the timeout", None),
+    ("N14", F, "            if not lo <= float(dec[sig]) <= hi:", "            if False:",
+     "input range plausibility disabled", None),
+    ("N15", F, '"brake_threat_gone": (lambda c, i, d: d >= c.brake_min_dwell_s and (',
+     '"brake_threat_gone": (lambda c, i, d: (', "brake release without minimum dwell", None),
+    ("N16", F, "        elif not ok:\n            self.ok_since = None", "        elif False:\n            self.ok_since = None",
+     "healing timer not reset when inputs fail", None),
+    ("N17", F, 'Transition("R11", (S.STANDBY, S.FCW, S.PARTIAL_BRAKE)', 'Transition("R11", (S.STANDBY, S.FCW)',
+     "no escalation from partial to full braking", None),
+    ("N18", K, "prev = [x for x in log.lead if x[0] <= t]", "prev = [x for x in log.lead if x[0] >= t]",
+     "KPI TTC taken from the radar frame after the event", None),
+    ("N19", K, "brk_edges = _rising([(t, a == 1 and f < -1e-5) for t, _, a, f in log.pre])",
+     "brk_edges = _rising([(t, a == 1) for t, _, a, f in log.pre])",
+     "KPI brake request ignores FORCE < 0", None),
+    ("N20", K, "if len(data) != msg.length or (has_cs and data[-1] != toyota_checksum(m.arbitration_id, data)):",
+     "if len(data) != msg.length:", "KPI uses frames with a bad checksum", None),
+    ("N21", K, "                cands.append(round(a + T, 6))", "                cands.append(round(a, 6))",
+     "fault onset = last frame instead of first missed deadline", None),
+    ("N22", K, "degr = [t for t, _, ind in log.hud if ind == 2]", "degr = [t for t, _, ind in log.hud if ind != 0]",
+     "degradation KPI also counts PCS_INDICATOR = off", None),
+    ("N23", K, "            sp = [v for ts, v in log.speed if ts <= t_c]",
+     "            sp = [v for ts, v in log.speed if ts <= tp]",
+     "impact speed from the SPEED frame before the last radar frame", None),
+    ("N24", X, "    if any(s in exp.forbidden for s in actual):\n        return False", "    if False:\n        return False",
+     "state-sequence check ignores forbidden states", None),
+    ("N25", X, "return k.ttc_fcw_bus is not None and k.ttc_fcw_bus >= 2.0",
+     "return k.ttc_fcw_bus is not None and k.ttc_fcw_bus > 2.0", "REQ-01 boundary (>= -> >)", None),
+    ("N26", X, 'if spec.family == "CCRb" or _closing0_kph(spec) <= 50.0:',
+     'if spec.family == "CCRb" or _closing0_kph(spec) < 50.0:', "REQ-03 avoidance boundary (<= -> <)", None),
+    ("N27", X, '"result": "PASS" if all(verdict.values()) else "FAIL"',
+     '"result": "PASS" if any(verdict.values()) else "FAIL"', "test case passes if any criterion passes", None),
+    ("N28", K, "if degr[0] <= t < end and a == 1 and f < -1e-5)",
+     "if degr[0] <= t < end and a == 1 and f < -1e-5 and False)",
+     "brake requests while FAULT is shown are never counted", None),
 ]
 
 

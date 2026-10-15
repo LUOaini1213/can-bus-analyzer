@@ -3,7 +3,8 @@
   python -m canbus_analyzer run   --seed 0 --faults all       # one run -> results/run_seed0_all/
   python -m canbus_analyzer run   --seed 0 --faults drop,dlc
   python -m canbus_analyzer sweep --seeds 20                  # -> results/sweep/
-  python -m canbus_analyzer all                               # clean + faulted run + sweep
+  python -m canbus_analyzer function                          # AEB function scenario matrix -> results/function/
+  python -m canbus_analyzer all                               # clean + faulted run + sweep + function matrix
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from pathlib import Path
 
 from .config import RESULTS_DIR
 from .faults import FAULT_KINDS, FaultConfig
+from .function_matrix import write_function_results
 from .logio import roundtrip
 from .pipeline import run_once
 from .report import write_run
@@ -34,6 +36,12 @@ def cmd_run(seed: int, faults: str, out: Path | None) -> int:
     return 0 if all(r["ok"] for r in summary["roundtrip"]) else 1
 
 
+def cmd_function(out: Path) -> int:
+    s = write_function_results(out)
+    print(f"[function] {s['n_cases']} test cases -> {out}: {s['n_pass']} PASS, {s['n_fail']} FAIL")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="canbus_analyzer", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -46,7 +54,9 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("sweep", help="detection / latency sweep over seeds")
     s.add_argument("--seeds", type=int, default=20)
     s.add_argument("--out", type=Path, default=RESULTS_DIR / "sweep")
-    sub.add_parser("all", help="clean run, all-faults run and the sweep (regenerates results/)")
+    f = sub.add_parser("function", help="AEB function scenario matrix, KPIs and test-case catalogue")
+    f.add_argument("--out", type=Path, default=RESULTS_DIR / "function")
+    sub.add_parser("all", help="clean run, all-faults run, sweep and function matrix (regenerates results/)")
     args = ap.parse_args(argv)
 
     if args.cmd == "run":
@@ -55,10 +65,13 @@ def main(argv: list[str] | None = None) -> int:
         summary = write_sweep(args.out, args.seeds)
         print(f"[sweep] {args.seeds} seeds -> {args.out}  (collisions in {summary['collisions']} scenarios)")
         return 0
+    if args.cmd == "function":
+        return cmd_function(args.out)
     rc = cmd_run(0, "none", RESULTS_DIR / "run_seed0_none")
     rc |= cmd_run(0, "all", RESULTS_DIR / "run_seed0_all")
     summary = write_sweep(RESULTS_DIR / "sweep", 20)
     print(f"[sweep] 20 seeds -> {RESULTS_DIR / 'sweep'}  (collisions in {summary['collisions']} scenarios)")
+    cmd_function(RESULTS_DIR / "function")
     return rc
 
 

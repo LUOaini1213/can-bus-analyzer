@@ -17,6 +17,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from canbus_analyzer.function_matrix import (render_kpi_md, render_requirements_md,  # noqa: E402
+                                             render_testcases_md, render_transitions_md)
 from canbus_analyzer.sweep import render_latency_md, render_sweep_md  # noqa: E402
 
 RES = ROOT / "results"
@@ -76,7 +78,24 @@ def block_latency() -> str:
     return render_latency_md(_load("sweep/summary.json"))
 
 
-BLOCKS = {"run": block_run, "sweep": block_sweep, "latency": block_latency, "mutation": block_mutation}
+def block_fsm() -> str:
+    return render_transitions_md()
+
+
+def block_reqs() -> str:
+    return render_requirements_md()
+
+
+def block_testcases() -> str:
+    return render_testcases_md(_load("function/summary.json"))
+
+
+def block_kpi() -> str:
+    return render_kpi_md(_load("function/summary.json"))
+
+
+BLOCKS = {"run": block_run, "sweep": block_sweep, "latency": block_latency, "mutation": block_mutation,
+          "fsm": block_fsm, "reqs": block_reqs, "testcases": block_testcases, "kpi": block_kpi}
 
 
 def render(readme: str) -> str:

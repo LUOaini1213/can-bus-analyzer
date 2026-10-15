@@ -7,7 +7,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 NEEDED = ["results/run_seed0_none/summary.json", "results/run_seed0_all/summary.json",
-          "results/sweep/summary.json", "results/mutation.csv"]
+          "results/sweep/summary.json", "results/mutation.csv", "results/function/summary.json"]
 
 
 def test_readme_numbers_match_results():

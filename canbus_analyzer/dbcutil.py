@@ -73,3 +73,34 @@ def signal_limits(name: str, signal: str) -> tuple[float, float]:
 
 def all_limits() -> dict[tuple[str, str], tuple[float, float]]:
     return {(m, s): signal_limits(m, s) for m, sigs in RANGE_CHECKED.items() for s in sigs}
+
+
+# --- byte-local signal access ---------------------------------------------
+# opendbc's PCS_HUD (0x411) contains overlapping placeholder signals
+# (SET_ME_X10 39|8 covers PCS_TEMP/PCS_DUST, FRD_ADJ 53|3 overlaps
+# PCS_SENSITIVITY 55|8); cantools' bitstruct codec then packs/unpacks 10 bytes
+# for an 8-byte frame and both encode() and decode() fail.  For the few
+# signals this project needs that fit inside one byte, read/write the bits
+# directly, with the bit position taken from the DBC signal definition.
+def _byte_field(name: str, signal: str) -> tuple[int, int, int]:
+    sig = load_db().get_message_by_name(name).get_signal_by_name(signal)
+    if sig.byte_order != "big_endian":
+        raise ValueError(f"{name}.{signal}: only Motorola signals supported")
+    byte, msb = divmod(sig.start, 8)
+    shift = msb - sig.length + 1
+    if shift < 0:
+        raise ValueError(f"{name}.{signal} crosses a byte boundary")
+    return byte, shift, (1 << sig.length) - 1
+
+
+def pack_byte_signals(name: str, values: dict[str, int]) -> bytes:
+    buf = bytearray(load_db().get_message_by_name(name).length)
+    for signal, v in values.items():
+        byte, shift, mask = _byte_field(name, signal)
+        buf[byte] |= (int(v) & mask) << shift
+    return bytes(buf)
+
+
+def unpack_byte_signal(name: str, signal: str, data: bytes) -> int:
+    byte, shift, mask = _byte_field(name, signal)
+    return (data[byte] >> shift) & mask
