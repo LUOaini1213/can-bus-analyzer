@@ -1,0 +1,73 @@
+/* CANoe simulation node; assign this node to CAN1.
+ * Compilation/execution in licensed CANoe is still required.
+ * Project-only control 0x7E0 must never be connected to a vehicle network.
+ */
+includes
+{
+  #include "aeb_core.cin"
+}
+
+variables
+{
+  msTimer aebTaskTimer;
+  msTimer aebOutputTimer;
+  message CAN1.0x283 aebPreMessage;
+  message CAN1.0x411 aebHudMessage;
+  byte aebRxBytes[8];
+  byte aebTxBytes[8];
+  long aebCounter;
+  long aebCaseId;
+}
+
+on start
+{
+  aebReset(timeNow() / 100000.0);
+  aebCounter = 0;
+  aebCaseId = 0;
+  setTimer(aebTaskTimer, 10);
+  setTimer(aebOutputTimer, 30);
+  write("AEB project node started on CAN1; CANoe execution evidence requires a captured run.");
+}
+
+on message *
+{
+  long j;
+  if (this.CAN != 1) return;
+  if (this.ID == 0x7E0)
+  {
+    if (this.DLC == 8 && this.byte(0) == 0x41 && this.byte(1) == 0x45 &&
+        this.byte(2) == 0x42 && this.byte(3) == 1 && this.byte(4) > 0 &&
+        this.byte(5) <= 1 && this.byte(6) <= 1 && this.byte(7) == 0)
+    {
+      /* mode 0 resets; mode 1 changes the switch without hiding R01. */
+      if (this.byte(6) == 0) aebReset(timeNow() / 100000.0);
+      aebMainSwitch = this.byte(5);
+      aebCaseId = this.byte(4);
+      if (this.byte(6) == 0) aebCounter = 0;
+      write("AEB case %d, control mode %d, main switch %d", aebCaseId, this.byte(6), aebMainSwitch);
+    }
+    return;
+  }
+  for (j = 0; j < 8; j++) aebRxBytes[j] = 0;
+  for (j = 0; j < this.DLC && j < 8; j++) aebRxBytes[j] = this.byte(j);
+  aebOnFrame(timeNow() / 100000.0, this.ID, this.DLC, aebRxBytes);
+}
+
+on timer aebTaskTimer
+{
+  aebStep(timeNow() / 100000.0);
+  setTimer(aebTaskTimer, 10);
+}
+
+on timer aebOutputTimer
+{
+  long j;
+  aebPreMessage.DLC = aebBuildPre(aebTxBytes, aebCounter);
+  for (j = 0; j < aebPreMessage.DLC; j++) aebPreMessage.byte(j) = aebTxBytes[j];
+  output(aebPreMessage);
+  aebHudMessage.DLC = aebBuildHud(aebTxBytes);
+  for (j = 0; j < aebHudMessage.DLC; j++) aebHudMessage.byte(j) = aebTxBytes[j];
+  output(aebHudMessage);
+  aebCounter = (aebCounter + 1) % 256;
+  setTimer(aebOutputTimer, 30);
+}

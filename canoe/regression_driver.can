@@ -1,0 +1,431 @@
+/*@!Encoding:1252*/
+/*
+ * Classic CAN1 regression stimulus and independent output assertions.
+ * Source prepared for a CANoe Simulation Setup network node. It has not
+ * been compiled or executed in CANoe in the current environment.
+ * No Test Feature Set, panel, external DLL, or SUT implementation is used.
+ * Expected arrays are read only by assertions, never to generate responses.
+ */
+includes
+{
+  #include "generated/regression_data.cin"
+}
+
+variables
+{
+  msTimer benchTimer;
+  message * benchStimulus;
+  dword benchOriginMs;
+  long benchNextFrame;
+  long benchNextCheck;
+  long benchPass;
+  long benchFail;
+  long benchFinished;
+  long benchCurrentCase;
+  long benchCaseStartMs;
+  long benchLatestControlMs;
+
+  long benchPreSeen;
+  long benchPreGood;
+  long benchPreDlc;
+  long benchPreChecksumGood;
+  long benchPreMs;
+  long benchPreState;
+  long benchPreActive;
+  long benchPreForce;
+
+  long benchHudSeen;
+  long benchHudGood;
+  long benchHudDlc;
+  long benchHudMs;
+  long benchHudFcw;
+  long benchHudIndicator;
+
+  /* History is independent of the SUT. Overwriting an in-window record
+   * marks that window failed rather than hiding excess output traffic. */
+  long benchPreHead;
+  long benchPreCount;
+  long benchPreOverflowMs;
+  long benchPreTimes[32];
+  long benchPreValid[32];
+  long benchPreDlcs[32];
+  long benchPreChecksums[32];
+  long benchPreStates[32];
+  long benchPreActives[32];
+  long benchPreForces[32];
+  long benchHudHead;
+  long benchHudCount;
+  long benchHudOverflowMs;
+  long benchHudTimes[32];
+  long benchHudValid[32];
+  long benchHudDlcs[32];
+  long benchHudFcws[32];
+  long benchHudIndicators[32];
+}
+
+long benchElapsedMs()
+{
+  /* timeNow() is in 10 us units; truncate to measurement milliseconds. */
+  return (long)(timeNow() / 100 - benchOriginMs);
+}
+
+void benchClearOutputs()
+{
+  /* Missing or malformed output must never look like an expected zero. */
+  benchPreSeen = 0;
+  benchPreGood = 0;
+  benchPreDlc = -1;
+  benchPreChecksumGood = 0;
+  benchPreMs = -1;
+  benchPreState = -1;
+  benchPreActive = -1;
+  benchPreForce = -1;
+  benchHudSeen = 0;
+  benchHudGood = 0;
+  benchHudDlc = -1;
+  benchHudMs = -1;
+  benchHudFcw = -1;
+  benchHudIndicator = -1;
+  benchPreHead = 0;
+  benchPreCount = 0;
+  benchPreOverflowMs = -1;
+  benchHudHead = 0;
+  benchHudCount = 0;
+  benchHudOverflowMs = -1;
+}
+
+void benchStorePre()
+{
+  if (benchPreCount == 32)
+  {
+    if (benchPreTimes[benchPreHead] > benchPreMs - 65 &&
+        benchPreTimes[benchPreHead] >= benchLatestControlMs)
+      benchPreOverflowMs = benchPreTimes[benchPreHead];
+  }
+  else benchPreCount++;
+  benchPreTimes[benchPreHead] = benchPreMs;
+  benchPreValid[benchPreHead] = benchPreGood;
+  benchPreDlcs[benchPreHead] = benchPreDlc;
+  benchPreChecksums[benchPreHead] = benchPreChecksumGood;
+  benchPreStates[benchPreHead] = benchPreState;
+  benchPreActives[benchPreHead] = benchPreActive;
+  benchPreForces[benchPreHead] = benchPreForce;
+  benchPreHead = (benchPreHead + 1) % 32;
+}
+
+void benchStoreHud()
+{
+  if (benchHudCount == 32)
+  {
+    if (benchHudTimes[benchHudHead] > benchHudMs - 65 &&
+        benchHudTimes[benchHudHead] >= benchLatestControlMs)
+      benchHudOverflowMs = benchHudTimes[benchHudHead];
+  }
+  else benchHudCount++;
+  benchHudTimes[benchHudHead] = benchHudMs;
+  benchHudValid[benchHudHead] = benchHudGood;
+  benchHudDlcs[benchHudHead] = benchHudDlc;
+  benchHudFcws[benchHudHead] = benchHudFcw;
+  benchHudIndicators[benchHudHead] = benchHudIndicator;
+  benchHudHead = (benchHudHead + 1) % 32;
+}
+
+void benchAbort(long recordIndex, long reason)
+{
+  benchFinished = 1;
+  cancelTimer(benchTimer);
+  /* Abort is not a completed suite and cannot be accepted as one. */
+  write("AEB_SUITE_ABORT index=%d reason=%d pass=%d fail=%d expected=%d complete=0",
+        recordIndex, reason, benchPass, benchFail, benchCheckCount);
+}
+
+long benchValidateData()
+{
+  long i;
+  if (benchFrameCount <= 0 || benchCheckCount <= 0 || benchEndMs < 0)
+    return 0;
+  if (benchFrameCount > elcount(benchFrameMs) ||
+      benchFrameCount > elcount(benchFrameId) ||
+      benchFrameCount > elcount(benchFrameDlc) ||
+      benchFrameCount > elcount(benchFrameData))
+    return 0;
+  if (benchCheckCount > elcount(benchCheckMs) ||
+      benchCheckCount > elcount(benchCheckCase) ||
+      benchCheckCount > elcount(benchCheckState) ||
+      benchCheckCount > elcount(benchCheckActive) ||
+      benchCheckCount > elcount(benchCheckForce) ||
+      benchCheckCount > elcount(benchCheckFcw) ||
+      benchCheckCount > elcount(benchCheckIndicator))
+    return 0;
+
+  for (i = 0; i < benchFrameCount; i++)
+  {
+    if (benchFrameMs[i] < 0 || benchFrameMs[i] > benchEndMs ||
+        benchFrameId[i] > 0x7FF ||
+        benchFrameDlc[i] < 0 || benchFrameDlc[i] > 8)
+      return 0;
+    if (i > 0 && benchFrameMs[i] < benchFrameMs[i - 1])
+      return 0;
+    /* Only the driver may send inputs and controls, never SUT outputs. */
+    if (benchFrameId[i] == 0x283 || benchFrameId[i] == 0x411)
+      return 0;
+  }
+  for (i = 0; i < benchCheckCount; i++)
+  {
+    if (benchCheckMs[i] < 0 || benchCheckMs[i] > benchEndMs)
+      return 0;
+    if (i > 0 && benchCheckMs[i] < benchCheckMs[i - 1])
+      return 0;
+  }
+  return 1;
+}
+
+void benchSendFrame(long index, long nowMs)
+{
+  long j;
+  long opcode;
+  if (benchFrameId[index] == 0x7E0)
+  {
+    if (benchFrameDlc[index] != 8 ||
+        benchFrameData[index][0] != 65 ||
+        benchFrameData[index][1] != 69 ||
+        benchFrameData[index][2] != 66 ||
+        benchFrameData[index][3] != 1 ||
+        benchFrameData[index][4] == 0 ||
+        benchFrameData[index][5] > 1 ||
+        benchFrameData[index][6] > 1 ||
+        benchFrameData[index][7] != 0)
+    {
+      benchAbort(index, 2); /* Invalid test-only control payload. */
+      return;
+    }
+    opcode = benchFrameData[index][6];
+    if (opcode == 0)
+    {
+      benchCurrentCase = benchFrameData[index][4];
+      benchCaseStartMs = nowMs;
+      benchClearOutputs();
+    }
+    else if (benchCurrentCase != benchFrameData[index][4])
+    {
+      benchAbort(index, 3); /* Switch-only action cannot change the case. */
+      return;
+    }
+    /* Update here: a node need not receive its own output() messages. */
+    benchLatestControlMs = nowMs;
+    write("AEB_CONTROL case=%d opcode=%d main=%d time_ms=%d",
+          benchCurrentCase, opcode, benchFrameData[index][5], nowMs);
+  }
+  benchStimulus.CAN = 1;
+  benchStimulus.ID = benchFrameId[index];
+  benchStimulus.DLC = benchFrameDlc[index];
+  for (j = 0; j < 8; j++)
+    benchStimulus.byte(j) = benchFrameData[index][j];
+  output(benchStimulus);
+}
+
+void benchEvaluate(long index, long nowMs)
+{
+  long preFresh;
+  long hudFresh;
+  long caseGood;
+  long valuesGood;
+  long passed;
+  long i;
+  long preSamples;
+  long hudSamples;
+  long tooManyInWindow;
+
+  preSamples = 0;
+  hudSamples = 0;
+  valuesGood = 1;
+  for (i = 0; i < benchPreCount; i++)
+  {
+    if (benchPreTimes[i] >= benchCaseStartMs &&
+        benchPreTimes[i] >= benchLatestControlMs &&
+        benchPreTimes[i] > nowMs - 65 && benchPreTimes[i] <= nowMs)
+    {
+      preSamples++;
+      if (!benchPreValid[i] || benchPreDlcs[i] != 7 || !benchPreChecksums[i] ||
+          benchPreStates[i] != benchCheckState[index] ||
+          benchPreActives[i] != benchCheckActive[index] ||
+          benchPreForces[i] != benchCheckForce[index])
+        valuesGood = 0;
+    }
+  }
+  for (i = 0; i < benchHudCount; i++)
+  {
+    if (benchHudTimes[i] >= benchCaseStartMs &&
+        benchHudTimes[i] >= benchLatestControlMs &&
+        benchHudTimes[i] > nowMs - 65 && benchHudTimes[i] <= nowMs)
+    {
+      hudSamples++;
+      if (!benchHudValid[i] || benchHudDlcs[i] != 8 ||
+          benchHudFcws[i] != benchCheckFcw[index] ||
+          benchHudIndicators[i] != benchCheckIndicator[index])
+        valuesGood = 0;
+    }
+  }
+  preFresh = preSamples > 0;
+  hudFresh = hudSamples > 0;
+  tooManyInWindow =
+    (benchPreOverflowMs >= benchLatestControlMs &&
+     benchPreOverflowMs > nowMs - 65 && benchPreOverflowMs <= nowMs) ||
+    (benchHudOverflowMs >= benchLatestControlMs &&
+     benchHudOverflowMs > nowMs - 65 && benchHudOverflowMs <= nowMs);
+  caseGood = benchCurrentCase == benchCheckCase[index] &&
+             benchCurrentCase > 0;
+  passed = caseGood && preFresh && hudFresh && valuesGood && !tooManyInWindow;
+  if (passed)
+  {
+    benchPass++;
+    write("AEB_CHECK case=%d index=%d result=PASS time_ms=%d scheduled_ms=%d pre_ms=%d hud_ms=%d state=%d active=%d force=%d fcw=%d indicator=%d",
+          benchCheckCase[index], index, nowMs, benchCheckMs[index],
+          benchPreMs, benchHudMs, benchPreState, benchPreActive,
+          benchPreForce, benchHudFcw, benchHudIndicator);
+  }
+  else
+  {
+    benchFail++;
+    write("AEB_CHECK case=%d index=%d result=FAIL time_ms=%d scheduled_ms=%d current_case=%d case_ok=%d pre_fresh=%d hud_fresh=%d pre_dlc=%d checksum_ok=%d hud_dlc=%d pre_ms=%d hud_ms=%d",
+          benchCheckCase[index], index, nowMs, benchCheckMs[index],
+          benchCurrentCase, caseGood, preFresh, hudFresh, benchPreDlc,
+          benchPreChecksumGood, benchHudDlc, benchPreMs, benchHudMs);
+    write("AEB_CHECK_WINDOW index=%d pre_samples=%d hud_samples=%d values_ok=%d too_many_in_window=%d",
+          index, preSamples, hudSamples, valuesGood, tooManyInWindow);
+    write("AEB_CHECK_VALUES index=%d actual_state=%d expected_state=%d actual_active=%d expected_active=%d actual_force=%d expected_force=%d actual_fcw=%d expected_fcw=%d actual_indicator=%d expected_indicator=%d",
+          index, benchPreState, benchCheckState[index],
+          benchPreActive, benchCheckActive[index],
+          benchPreForce, benchCheckForce[index],
+          benchHudFcw, benchCheckFcw[index],
+          benchHudIndicator, benchCheckIndicator[index]);
+  }
+}
+
+void benchAdvance(long nowMs)
+{
+  long i;
+  /* Finite ready-record loops only. Never wait for time or a response. */
+  for (i = benchNextFrame; i < benchFrameCount; i++)
+  {
+    if (benchFrameMs[i] > nowMs)
+      break;
+    benchSendFrame(i, nowMs);
+    if (benchFinished)
+      return;
+    benchNextFrame = i + 1;
+  }
+  for (i = benchNextCheck; i < benchCheckCount; i++)
+  {
+    if (benchCheckMs[i] > nowMs)
+      break;
+    benchEvaluate(i, nowMs);
+    benchNextCheck = i + 1;
+  }
+  if (nowMs >= benchEndMs && benchNextFrame == benchFrameCount &&
+      benchNextCheck == benchCheckCount &&
+      benchPass + benchFail == benchCheckCount)
+  {
+    benchFinished = 1;
+    cancelTimer(benchTimer);
+    write("AEB_SUITE pass=%d fail=%d expected=%d complete=1",
+          benchPass, benchFail, benchCheckCount);
+  }
+}
+
+on start
+{
+  benchOriginMs = timeNow() / 100;
+  benchNextFrame = 0;
+  benchNextCheck = 0;
+  benchPass = 0;
+  benchFail = 0;
+  benchFinished = 0;
+  benchCurrentCase = -1;
+  benchCaseStartMs = -1;
+  benchLatestControlMs = -1;
+  benchClearOutputs();
+  if (!benchValidateData())
+  {
+    benchAbort(-1, 1); /* Generated manifest has inconsistent bounds. */
+    return;
+  }
+  write("AEB_SUITE_BEGIN frames=%d expected=%d end_ms=%d channel=1",
+        benchFrameCount, benchCheckCount, benchEndMs);
+  benchAdvance(0);
+  if (!benchFinished)
+    setTimer(benchTimer, 1);
+}
+
+on timer benchTimer
+{
+  if (benchFinished)
+    return;
+  benchAdvance(benchElapsedMs());
+  if (!benchFinished)
+    setTimer(benchTimer, 1);
+}
+
+on message 0x283
+{
+  long i;
+  long checksum;
+  long rawForce;
+  if (this.CAN != 1 || benchFinished)
+    return;
+  benchPreSeen = 1;
+  benchPreGood = 0;
+  benchPreChecksumGood = 0;
+  benchPreDlc = this.DLC;
+  benchPreMs = (long)(this.time / 100 - benchOriginMs);
+  benchPreState = -1;
+  benchPreActive = -1;
+  benchPreForce = -1;
+  if (this.DLC != 7)
+  {
+    benchStorePre();
+    return;
+  }
+  /* Toyota: ID low + ID high + DLC + all bytes except checksum. */
+  checksum = 0x83 + 0x02 + 7;
+  for (i = 0; i < 6; i++)
+    checksum += this.byte(i);
+  benchPreChecksumGood = (checksum & 0xFF) == this.byte(6);
+  if (!benchPreChecksumGood)
+  {
+    benchStorePre();
+    return;
+  }
+  benchPreState = (this.byte(4) >> 2) & 7;
+  benchPreActive = (this.byte(5) >> 1) & 1;
+  rawForce = (this.byte(2) << 8) | this.byte(3);
+  if (rawForce >= 32768)
+    rawForce -= 65536;
+  benchPreForce = rawForce * 2;
+  benchPreGood = 1;
+  benchStorePre();
+}
+
+on message 0x411
+{
+  if (this.CAN != 1 || benchFinished)
+    return;
+  benchHudSeen = 1;
+  benchHudGood = 0;
+  benchHudDlc = this.DLC;
+  benchHudMs = (long)(this.time / 100 - benchOriginMs);
+  benchHudFcw = -1;
+  benchHudIndicator = -1;
+  if (this.DLC != 8)
+  {
+    benchStoreHud();
+    return;
+  }
+  /* This DBC HUD message has no Toyota checksum signal. */
+  benchHudFcw = (this.byte(0) >> 4) & 1;
+  benchHudIndicator = (this.byte(0) >> 6) & 3;
+  benchHudGood = 1;
+  benchStoreHud();
+}
+
+/* An early measurement stop never executes the complete=1 timer path. */

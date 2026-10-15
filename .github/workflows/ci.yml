@@ -17,3 +17,15 @@ jobs:
       - name: README numbers must match regenerated results
         run: python scripts/readme_check.py
       - run: python -m pytest -q
+      - name: Portable algorithm and exported bench contracts
+        run: |
+          python scripts/check_capl_core.py --out results/canoe_bridge/portable_core_check.json
+          python -m canbus_analyzer canoe-build
+          python -m canbus_analyzer canoe-verify artifacts/canoe_aeb/python_reference.asc --reference --report results/canoe_bridge/reference_asc_check.json
+          python -m canbus_analyzer canoe-verify artifacts/canoe_aeb/python_reference.blf --reference --report results/canoe_bridge/reference_blf_check.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-canoe-bench-unverified-in-canoe
+          path: |
+            results/canoe_bridge/
+            artifacts/canoe_aeb/

@@ -1,0 +1,36 @@
+{
+  "verified_at_utc": "2026-10-15T09:25:12.319356+00:00",
+  "base_commit": "27da00499f1126000d9975d4af12c145a2ddee21",
+  "source_state": "local uncommitted upgrade",
+  "unit_tests_passed": 142,
+  "new_log_acceptance_tests": 45,
+  "cases": 8,
+  "handwritten_bus_checks": 36,
+  "stimulus_frames": 2947,
+  "portable_core_checked": true,
+  "portable_core_steps": 827,
+  "hand_expected_core_steps": 91,
+  "transition_rules": 13,
+  "transition_edges": 27,
+  "reference_formats_checked": [
+    "ASC",
+    "BLF"
+  ],
+  "canoe_installed_detected": false,
+  "canoe_compiled": false,
+  "canoe_executed": false,
+  "remote_ci_run_for_this_change": null,
+  "scope": "CAPL source preparation and portable algorithm / synthetic log contract verification; no CANoe or HIL acceptance",
+  "existing_mutation_results": "Historical results retained; mutation campaign not rerun for this upgrade",
+  "source_sha256": {
+    "canbus_analyzer/canoe_suite.py": "c3ce5943d314342e342144cdbc025ef9a44639cd4ad47e8f0849f7bc0735596d",
+    "canbus_analyzer/aeb_function.py": "c90dff394375959636cf4ddac63bc53e00e0d8e9466567f73d3c060d5d188c18",
+    "canbus_analyzer/dbcutil.py": "d09ef696057bcbe1770bb825c428f14f7e31d35e11b3758cc10ca2769c2b6e3a",
+    "canbus_analyzer/config.py": "31d760784d474d7f4abfbe3e8311046ea5c31629d11654c18931c4c11e12703d",
+    "canbus_analyzer/closed_loop.py": "c17f6787fa65bc83b644c532dae05bece12a8fc7a7b40eb60c2ce4154865add5",
+    "canoe/aeb_core.cin": "f4cb36e0b9ea9ba040c6fd6bfc1fdb94991733436509536dbb5e4ce9cface95c",
+    "canoe/aeb_ecu.can": "7a5a61b821d1c31f85e46efe4f0692d57b3338f1aef6d1691702e95a8dd4079c",
+    "canoe/regression_driver.can": "deec131f11d034ebe611aaa6d49c837ef818258f53d6d46e86c54975982faf5e"
+  },
+  "completion_coverage": "Each output stream must start within 35ms and reach within 35ms of the suite end; unrelated frames do not count."
+}

@@ -1,0 +1,26 @@
+{
+  "label": "portable_core_checked",
+  "portable_core_checked": true,
+  "canoe_compiled": false,
+  "canoe_executed": false,
+  "scope": "Literal .cin functions via C++ against unmodified Python AebEcu; CAPL handlers and CANoe are unverified.",
+  "adaptation": "Unwrap variables block; byte=uint8_t, dword=uint32_t, long=int32_t; function source unchanged.",
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "uses_wsl": true,
+  "core_sha256": "f4cb36e0b9ea9ba040c6fd6bfc1fdb94991733436509536dbb5e4ce9cface95c",
+  "oracle_sha256": "c90dff394375959636cf4ddac63bc53e00e0d8e9466567f73d3c060d5d188c18",
+  "runner_sha256": "4010601a200f25919302eb4992069201f47cd7ab35af83745b7b4dea7417fc0c",
+  "transcript_sha256": "3a578619d66ca3d996d796ab11a6cb0e8f656ab0c5d5943392819870c8d873c7",
+  "compared_steps": 827,
+  "hand_expected_steps": 91,
+  "transition_rules": 13,
+  "transition_edges": 27,
+  "checks": [
+    "13 rules / 27 source-state edges",
+    "handwritten TTC, speed, pedal, dwell and hysteresis boundaries",
+    "per-input strict timeout, DLC, checksum, range, valid-frame recovery",
+    "decoded values, supervisor history, state, rule, deceleration and all PRE/HUD output bytes",
+    "signed Motorola fields, counter wrap, main switch without reset, absolute reset origin",
+    "deterministic asynchronous input stream"
+  ]
+}

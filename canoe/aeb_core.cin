@@ -1,0 +1,244 @@
+/* Portable CAPL algorithm core, fixed default AebConfig.
+ * No CANoe APIs are called here. C++ portability checks are NOT CAPL builds.
+ * States: OFF=0, STANDBY=1, FCW=2, PARTIAL=3, FULL=4, FAULT=5.
+ * All thresholds, state encoding and degradation are project choices.
+ */
+variables
+{
+  long aebState;
+  long aebLastRule;
+  long aebMainSwitch;
+  long aebBrakePressed;
+  double aebSpeed;
+  double aebDistance;
+  double aebRelative;
+  double aebGas;
+  double aebDecel;
+  double aebT0;
+  double aebEntered;
+  double aebOkSince;
+  long aebOkSinceKnown;
+  long aebReceived[4];
+  long aebBad[4];
+  double aebLastValid[4];
+  double aebPeriods[4] = {0.020, 0.050, 0.020, 0.025};
+}
+
+/* Motorola sawtooth bit numbering, including fields crossing bytes.
+ * Preconditions: length 1..30 and the field lies within the supplied buffer.
+ */
+long aebGetBits(byte data[], long start, long length)
+{
+  long bit;
+  long j;
+  long value;
+  bit = start;
+  value = 0;
+  for (j = 0; j < length; j++)
+  {
+    value = (value << 1) | ((data[bit / 8] >> (bit % 8)) & 1);
+    if ((bit % 8) == 0) bit = bit + 15;
+    else bit--;
+  }
+  return value;
+}
+
+void aebPutBits(byte data[], long start, long length, long value)
+{
+  long bit;
+  long j;
+  long mask;
+  bit = start;
+  for (j = length - 1; j >= 0; j--)
+  {
+    mask = 1 << (bit % 8);
+    if ((value >> j) & 1) data[bit / 8] = data[bit / 8] | mask;
+    else data[bit / 8] = data[bit / 8] & (255 ^ mask);
+    if ((bit % 8) == 0) bit = bit + 15;
+    else bit--;
+  }
+}
+
+long aebChecksum(dword id, long length, byte data[])
+{
+  long total;
+  long j;
+  total = length;
+  while (id != 0)
+  {
+    total = total + (id & 255);
+    id = id >> 8;
+  }
+  for (j = 0; j < length - 1; j++) total = total + data[j];
+  return total & 255;
+}
+
+void aebReset(double t)
+{
+  long j;
+  aebState = 0;
+  aebLastRule = 0;
+  aebMainSwitch = 1;
+  aebBrakePressed = 0;
+  aebSpeed = 0.0;
+  aebDistance = 300.0;
+  aebRelative = 0.0;
+  aebGas = 0.0;
+  aebDecel = 0.0;
+  aebT0 = t;
+  aebEntered = t;
+  aebOkSince = t;
+  aebOkSinceKnown = 0;
+  for (j = 0; j < 4; j++)
+  {
+    aebReceived[j] = 0;
+    aebBad[j] = 0;
+    aebLastValid[j] = t;
+  }
+}
+
+void aebOnFrame(double t, dword id, long length, byte data[])
+{
+  long index;
+  long valid;
+  long raw;
+  double speed;
+  double distance;
+  double relative;
+  index = -1;
+  if (id == 0xB4) index = 0;
+  else if (id == 0x2E6) index = 1;
+  else if (id == 0x2C1) index = 2;
+  else if (id == 0x226) index = 3;
+  if (index < 0) return;
+  valid = length == 8;
+  if (valid && index != 3)
+    valid = data[7] == aebChecksum(id, length, data);
+  speed = aebSpeed;
+  distance = aebDistance;
+  relative = aebRelative;
+  if (valid && index == 0)
+  {
+    speed = aebGetBits(data, 47, 16) * 0.01;
+    valid = speed >= 0.0 && speed <= 250.0;
+  }
+  if (valid && index == 1)
+  {
+    distance = aebGetBits(data, 7, 13) * 0.05;
+    raw = aebGetBits(data, 23, 12);
+    if (raw >= 2048) raw = raw - 4096;
+    relative = raw * 0.025;
+    valid = distance >= 0.0 && distance <= 300.0 && relative >= -100.0 && relative <= 100.0;
+  }
+  if (!valid)
+  {
+    aebBad[index]++;
+    return;
+  }
+  aebBad[index] = 0;
+  aebReceived[index] = 1;
+  aebLastValid[index] = t;
+  if (index == 0) aebSpeed = speed;
+  else if (index == 1)
+  {
+    aebDistance = distance;
+    aebRelative = relative;
+  }
+  else if (index == 2) aebGas = aebGetBits(data, 55, 8) * 0.5;
+  else aebBrakePressed = aebGetBits(data, 37, 1);
+}
+
+/* One matching transition per task, in the same priority order as Python. */
+long aebStep(double t)
+{
+  long j;
+  long fault;
+  long allReceived;
+  long ok;
+  long ttcKnown;
+  long armed;
+  long active;
+  long braking;
+  long nextState;
+  double ref;
+  double ttc;
+  double dwell;
+  fault = 0;
+  allReceived = 1;
+  for (j = 0; j < 4; j++)
+  {
+    if (!aebReceived[j]) allReceived = 0;
+    ref = aebT0;
+    if (aebReceived[j]) ref = aebLastValid[j];
+    if (t - ref > 3 * aebPeriods[j] || aebBad[j] >= 2) fault = 1;
+  }
+  ok = !fault && allReceived;
+  if (ok && !aebOkSinceKnown)
+  {
+    aebOkSince = t;
+    aebOkSinceKnown = 1;
+  }
+  else if (!ok) aebOkSinceKnown = 0;
+  ttcKnown = aebReceived[1] && aebDistance < 300.0 && -aebRelative > 0.1;
+  ttc = 0.0;
+  if (ttcKnown) ttc = aebDistance / -aebRelative;
+  armed = ttcKnown && aebReceived[0] && aebSpeed >= 8.0 && aebSpeed <= 130.0 && aebGas < 40.0;
+  active = aebState >= 2 && aebState <= 4;
+  braking = aebState == 3 || aebState == 4;
+  dwell = t - aebEntered;
+  nextState = aebState;
+  aebLastRule = 0;
+  if (!aebMainSwitch && aebState != 0) { nextState = 0; aebLastRule = 1; }
+  else if (aebState == 0 && aebMainSwitch && fault) { nextState = 5; aebLastRule = 2; }
+  else if (aebState == 0 && aebMainSwitch && ok) { nextState = 1; aebLastRule = 3; }
+  else if (aebState >= 1 && aebState <= 4 && fault) { nextState = 5; aebLastRule = 4; }
+  else if (aebState == 5 && ok && aebOkSinceKnown && t - aebOkSince >= 1.0) { nextState = 1; aebLastRule = 5; }
+  else if (active && aebGas >= 40.0) { nextState = 1; aebLastRule = 6; }
+  else if (aebState == 2 && aebBrakePressed) { nextState = 1; aebLastRule = 7; }
+  else if (braking && aebReceived[0] && aebSpeed < 0.5) { nextState = 1; aebLastRule = 8; }
+  else if (braking && dwell >= 0.5 && !ttcKnown) { nextState = 1; aebLastRule = 9; }
+  else if (aebState == 2 && dwell >= 0.8 && (!ttcKnown || ttc >= 2.6 + 0.3)) { nextState = 1; aebLastRule = 10; }
+  else if ((aebState == 1 || aebState == 2 || aebState == 3) && armed && ttc < 0.9) { nextState = 4; aebLastRule = 11; }
+  else if ((aebState == 1 || aebState == 2) && armed && ttc < 1.6) { nextState = 3; aebLastRule = 12; }
+  else if (aebState == 1 && armed && !aebBrakePressed && ttc < 2.6) { nextState = 2; aebLastRule = 13; }
+  if (aebLastRule != 0)
+  {
+    aebState = nextState;
+    aebEntered = t;
+  }
+  aebDecel = 0.0;
+  if (aebState == 3) aebDecel = 4.0;
+  else if (aebState == 4) aebDecel = 9.0;
+  return aebState;
+}
+
+long aebBuildPre(byte data[], long counter)
+{
+  long j;
+  long forceRaw;
+  for (j = 0; j < 7; j++) data[j] = 0;
+  forceRaw = 0;
+  if (aebState == 3) forceRaw = -3000;
+  else if (aebState == 4) forceRaw = -6750;
+  /* Write the unsigned two's-complement raw form, avoiding signed shifts. */
+  if (forceRaw < 0) forceRaw = forceRaw + 65536;
+  aebPutBits(data, 7, 8, counter & 255);
+  aebPutBits(data, 23, 16, forceRaw);
+  aebPutBits(data, 36, 3, aebState);
+  aebPutBits(data, 41, 1, aebState == 3 || aebState == 4);
+  data[6] = aebChecksum(0x283, 7, data);
+  return 7;
+}
+
+long aebBuildHud(byte data[])
+{
+  long j;
+  long indicator;
+  for (j = 0; j < 8; j++) data[j] = 0;
+  indicator = 0;
+  if (aebState == 5) indicator = 2;
+  else if (aebState == 0) indicator = 1;
+  aebPutBits(data, 4, 1, aebState >= 2 && aebState <= 4);
+  aebPutBits(data, 7, 2, indicator);
+  return 8;
+}
