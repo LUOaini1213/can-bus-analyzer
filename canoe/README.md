@@ -27,7 +27,11 @@
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-共享函数的 C++ 检查需要 g++；Windows 脚本使用本机 WSL 内的 `/usr/bin/g++`，Linux CI 直接使用 g++。只去掉 CAPL 的 `variables {}` 声明包装并映射整数类型，函数源码保持原样。该检查覆盖 827 个对照步骤，其中 91 个有额外手写预期，覆盖 13 条规则和全部 27 条来源状态转移边；核对状态、监督历史、解码值和 PRE/HUD 的每个输出字节。CAPL 事件处理器、CANoe 编译器、总线调度和配置没有通过这项检查得到验证。
+共享函数的 C++ 检查支持 MSVC、g++ 和 WSL g++。Windows 自动优先使用已安装的 Visual Studio C++ Build Tools；没有可启动的 MSVC 时再尝试 WSL，Linux CI 使用 g++。也可添加 `--compiler msvc`、`--compiler wsl` 或 `--compiler g++` 显式选择，报告记录实际编译器。MSVC 环境只在子进程加载；编译失败或结果不一致会直接失败，不会换编译器掩盖问题。
+
+检查只去掉 CAPL 的 `variables {}` 声明包装并映射整数类型，函数源码保持原样。它覆盖 827 个对照步骤，其中 91 个有额外手写预期，覆盖 13 条规则和全部 27 条来源状态转移边；核对状态、监督历史、解码值和 PRE/HUD 的每个输出字节。CAPL 事件处理器、CANoe 编译器、总线调度和配置没有通过这项检查得到验证。
+
+[2026-10-19 本地复核记录](../results/canoe_bridge/reverification_2026-10-19.json)记录了独立安装依赖后的 153 项测试、原生 MSVC 对照及两种参考日志各 36/36 检查。此前的 `acceptance.json` 是 2026-10-15 提交前快照，已补充后续发布链接；其中原始“未提交、未跑 CI”字段仅描述当时状态。CI 分别在 Linux 使用 g++、Windows 使用 MSVC 检查共享核心，两者均不执行 CANoe。
 
 生成目录默认是 `artifacts/canoe_aeb/`：
 

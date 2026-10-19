@@ -1,4 +1,13 @@
 {
+  "report_kind": "historical local snapshot before publication; see publication_followup and dated reverification",
+  "dated_reverification": "reverification_2026-10-19.json",
+  "publication_followup": {
+    "implementation_commit": "49a1ebb2aedb9f52608e76a1fe7365041878f6ef",
+    "pull_request": "https://github.com/LUOaini1213/can-bus-analyzer/pull/1",
+    "successful_ci_run": "https://github.com/LUOaini1213/can-bus-analyzer/actions/runs/38712972867",
+    "ci_non_equivalent_python_mutants_killed": "58/58",
+    "note": "The original fields below describe 2026-10-15 local observations before commit and CI; they are not current publication status. CI did not compile or execute CANoe."
+  },
   "verified_at_utc": "2026-10-15T09:25:12.319356+00:00",
   "base_commit": "27da00499f1126000d9975d4af12c145a2ddee21",
   "source_state": "local uncommitted upgrade",

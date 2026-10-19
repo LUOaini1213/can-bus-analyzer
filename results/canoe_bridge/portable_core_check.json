@@ -5,8 +5,15 @@
   "canoe_executed": false,
   "scope": "Literal .cin functions via C++ against unmodified Python AebEcu; CAPL handlers and CANoe are unverified.",
   "adaptation": "Unwrap variables block; byte=uint8_t, dword=uint32_t, long=int32_t; function source unchanged.",
-  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
-  "uses_wsl": true,
+  "compiler": "Microsoft C/C++ 19.44.35228 (x64)",
+  "compiler_backend": "msvc",
+  "compiler_command": [
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe"
+  ],
+  "compiler_probe_failures": [],
+  "uses_wsl": false,
+  "compiler_requested": "auto",
+  "compiler_diagnostics": "runner.cpp\n",
   "core_sha256": "f4cb36e0b9ea9ba040c6fd6bfc1fdb94991733436509536dbb5e4ce9cface95c",
   "oracle_sha256": "c90dff394375959636cf4ddac63bc53e00e0d8e9466567f73d3c060d5d188c18",
   "runner_sha256": "4010601a200f25919302eb4992069201f47cd7ab35af83745b7b4dea7417fc0c",
