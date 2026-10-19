@@ -17,3 +17,32 @@ jobs:
       - name: README numbers must match regenerated results
         run: python scripts/readme_check.py
       - run: python -m pytest -q
+      - name: Portable algorithm and exported bench contracts
+        run: |
+          python scripts/check_capl_core.py --out results/canoe_bridge/portable_core_check.json
+          python -m canbus_analyzer canoe-build
+          python -m canbus_analyzer canoe-verify artifacts/canoe_aeb/python_reference.asc --reference --report results/canoe_bridge/reference_asc_check.json
+          python -m canbus_analyzer canoe-verify artifacts/canoe_aeb/python_reference.blf --reference --report results/canoe_bridge/reference_blf_check.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-canoe-bench-unverified-in-canoe
+          path: |
+            results/canoe_bridge/
+            artifacts/canoe_aeb/
+  windows-portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - name: Compiler selection and failure reporting
+        run: python -m pytest tests/test_portable_compiler.py -q
+      - name: Literal core comparison with native MSVC
+        run: python scripts/check_capl_core.py --compiler msvc --out results/canoe_bridge/windows_portable_core_check.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-portable-core-unverified-in-canoe
+          path: results/canoe_bridge/windows_portable_core_check.json

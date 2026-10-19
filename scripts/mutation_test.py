@@ -174,7 +174,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="canbus-mut-") as tmp:
         base = Path(tmp) / "proj"
         shutil.copytree(ROOT, base, ignore=shutil.ignore_patterns(
-            ".venv", ".git", "results", "__pycache__", "*.asc", "*.blf"))
+            ".venv", ".git", "results", "artifacts", "__pycache__", "*.asc", "*.blf"))
         if not run_suite(base):
             print("baseline test suite fails; aborting")
             return 2

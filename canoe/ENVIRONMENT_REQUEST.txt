@@ -1,0 +1,26 @@
+Subject: Academic evaluation environment for a Classic CAN / CAPL AEB test bench
+
+I am a master's student preparing a small academic AEB function test project.
+Could you advise whether an academic, training, or time-limited evaluation
+environment is available for the following workflow?
+
+Required capabilities:
+- Import a custom Classic CAN DBC and CAPL .can/.cin files.
+- Create two simulated CAN1 network nodes, compile CAPL, and run a 24-second test.
+- Use timers, raw CAN frame access, Trace, Graphics, Write, and ASC/BLF logging.
+- Save and reopen the configuration and export compile diagnostics and raw logs.
+
+The test is software-only. It does not need vehicle access, a CAN interface,
+CAN FD, HIL hardware, diagnostics, or the Test Feature Set.
+CANoe or an appropriate CANoe4SW configuration would be acceptable if the
+evaluation includes custom CAPL compilation and the required simulated CAN bus.
+
+Public project: https://github.com/LUOaini1213/can-bus-analyzer
+The existing evidence is Python simulation and portable C++/Python algorithm
+comparison only; no real CANoe compilation or measurement has been claimed.
+
+Please confirm the included capabilities, licence duration, installation method,
+and any academic-use restrictions before any purchase or installation.
+
+This is an unsent request template. Fill in your name, university affiliation,
+and contact details before sending it yourself or sharing it with a lab manager.

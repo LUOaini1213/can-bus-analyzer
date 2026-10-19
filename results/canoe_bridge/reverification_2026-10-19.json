@@ -1,0 +1,89 @@
+{
+  "report_kind": "dated local verification snapshot; not CANoe acceptance",
+  "verified_at": "2026-10-19T22:21:22.767134+08:00",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "fresh_dependency_install": true,
+  "dependency_index": "https://pypi.org/simple",
+  "requirements_sha256": "d9b445e3437c5cbad8cd34ec46305f710ba3b80be1fc2954277d6cde7022ce9a",
+  "source_sha256": {
+    "scripts/check_capl_core.py": "8ca67b7e83785227ac902060bb1cdc1ecf56cbd8e477e384d350d004aabab820",
+    "tests/test_portable_compiler.py": "db9d3e4b8376fa0a94070e0c1c0480be94f97109c3a739e3d91e4d1704faca0b",
+    "canoe/aeb_core.cin": "f4cb36e0b9ea9ba040c6fd6bfc1fdb94991733436509536dbb5e4ce9cface95c",
+    "canbus_analyzer/aeb_function.py": "c90dff394375959636cf4ddac63bc53e00e0d8e9466567f73d3c060d5d188c18"
+  },
+  "evidence_sha256": {
+    "final_pytest.log": "3067af529d84e35abd7dc2556457fc152acd44ec8c140cd09ff445929f6ac4d5",
+    "portable_core_auto_check.json": "cae8453dc758b0da2d5000cf73e5c4e94444488c05312eb22a9c3eca29e75239",
+    "portable_core_msvc_check.json": "a7abc7357a7f78ab77ec312ff12c2b985f7918811eb638b17f538b5d8b2628d4",
+    "pip-freeze.txt": "b1553c10130e6aeca0dea4481e372a6e63901612a0d98e4f735867f8d6fcca74",
+    "bench_verification_metadata.json": "1a955a2a31a479194696eedee6f1d918eb0c360d14ad35f0c1a08b3ee620ed36",
+    "reference_asc_check.json": "f00871f85e0cdeef1204e9db59ae443c66ecb2acc9f3308b75336268d9e79ba8",
+    "reference_blf_check.json": "a86cf6c4594b278b1828b1e3ec04bd5ed1f3c9ead48fd464136d2d629cda32c5"
+  },
+  "unit_tests_passed": 153,
+  "new_compiler_tests": 11,
+  "portable_core": {
+    "portable_core_auto_check.json": {
+      "portable_core_checked": true,
+      "compiler": "Microsoft C/C++ 19.44.35228 (x64)",
+      "compiler_backend": "msvc",
+      "compiler_requested": "auto",
+      "compared_steps": 827,
+      "hand_expected_steps": 91,
+      "transition_rules": 13,
+      "transition_edges": 27,
+      "core_sha256": "f4cb36e0b9ea9ba040c6fd6bfc1fdb94991733436509536dbb5e4ce9cface95c",
+      "oracle_sha256": "c90dff394375959636cf4ddac63bc53e00e0d8e9466567f73d3c060d5d188c18",
+      "runner_sha256": "4010601a200f25919302eb4992069201f47cd7ab35af83745b7b4dea7417fc0c",
+      "transcript_sha256": "3a578619d66ca3d996d796ab11a6cb0e8f656ab0c5d5943392819870c8d873c7",
+      "canoe_compiled": false,
+      "canoe_executed": false
+    },
+    "portable_core_msvc_check.json": {
+      "portable_core_checked": true,
+      "compiler": "Microsoft C/C++ 19.44.35228 (x64)",
+      "compiler_backend": "msvc",
+      "compiler_requested": "msvc",
+      "compared_steps": 827,
+      "hand_expected_steps": 91,
+      "transition_rules": 13,
+      "transition_edges": 27,
+      "core_sha256": "f4cb36e0b9ea9ba040c6fd6bfc1fdb94991733436509536dbb5e4ce9cface95c",
+      "oracle_sha256": "c90dff394375959636cf4ddac63bc53e00e0d8e9466567f73d3c060d5d188c18",
+      "runner_sha256": "4010601a200f25919302eb4992069201f47cd7ab35af83745b7b4dea7417fc0c",
+      "transcript_sha256": "3a578619d66ca3d996d796ab11a6cb0e8f656ab0c5d5943392819870c8d873c7",
+      "canoe_compiled": false,
+      "canoe_executed": false
+    }
+  },
+  "reference_logs": {
+    "asc": {
+      "passed": true,
+      "checks_passed": 36,
+      "checks_total": 36,
+      "canoe_execution_confirmed": false
+    },
+    "blf": {
+      "passed": true,
+      "checks_passed": 36,
+      "checks_total": 36,
+      "canoe_execution_confirmed": false
+    }
+  },
+  "earlier_attempt": {
+    "backend": "wsl",
+    "result": "startup timed out before core comparison; preserved in private delivery evidence"
+  },
+  "environment_lookup": {
+    "date": "2026-10-19",
+    "executable_located": false,
+    "outer_containers_listed": 619,
+    "nested_containers_listed": 30,
+    "scope": "bounded D/E filename and archive-member search; unread, denied and timed-out areas remain; not proof of global absence",
+    "detailed_reports": "Provided separately in the private local delivery; not published to GitHub"
+  },
+  "canoe_compiled": false,
+  "canoe_executed": false,
+  "hil_validated": false,
+  "remote_ci": "This is a local verification snapshot. See PR #1 checks for the exact published head; older publication evidence remains explicitly historical."
+}

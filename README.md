@@ -1,5 +1,7 @@
 # can-bus-analyzer
 
+新增 [CANoe AEB 接入与自动化验收](canoe/README.md)：CAPL 状态机/监督器、独立刺激节点、8 组场景和 36 个手写总线检查、ASC/BLF 导出与独立日志核验。共享算法函数已经 C++ / Python 对照；**CAPL 包装尚未在 CANoe 编译或运行**。生成命令为 `python -m canbus_analyzer canoe-build`。
+
 两部分，都跑在 python-can 的进程内虚拟总线上，报文用真实量产车 DBC（commaai/opendbc 的 Toyota 定义）编解码：
 
 1. **AEB 功能设计与功能测试**：写了一个 AEB 功能（OFF / STANDBY / FCW / PARTIAL_BRAKE / FULL_BRAKE / FAULT 六状态，表驱动状态机），带输入监控（超时 + checksum/DLC/范围校验）和降级策略；功能节点、被控对象（玩具车辆模型）和记录节点三方挂在同一条虚拟总线上闭环运行。按 Euro NCAP AEB Car-to-Car 协议 v3.0.2 的 CCRs / CCRm / CCRb 场景类型（参数来源逐条标注）加上无威胁、驾驶员干预、故障、主开关关闭场景组成场景矩阵；功能 KPI 只从总线日志解码得出，再与仿真真值对比；功能测试用例表由运行矩阵自动生成（含实际结果和 PASS/FAIL）。
@@ -361,6 +363,8 @@ DLC / Checksum 不通过的帧不解码；范围不通过的帧不参与时延�
 <!-- BEGIN:mutation -->
 变异体 59 个；非等价变异体被测试杀死 58/58；声明为等价 1 个（M28 survived）。
 <!-- END:mutation -->
+
+这个变异集合针对 Python 分析器与 AEB 功能，不覆盖新增 CAPL 源码。CAPL 共享算法的跨语言对照和真实 CANoe 验证状态分别记录在 [接入说明](canoe/README.md) 中。
 
 ## 运行
 

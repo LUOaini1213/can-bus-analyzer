@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -56,6 +57,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--out", type=Path, default=RESULTS_DIR / "sweep")
     f = sub.add_parser("function", help="AEB function scenario matrix, KPIs and test-case catalogue")
     f.add_argument("--out", type=Path, default=RESULTS_DIR / "function")
+    cb = sub.add_parser("canoe-build", help="export CAPL bench, hand-written checks, and Python reference logs")
+    cb.add_argument("--out", type=Path, default=None)
+    cv = sub.add_parser("canoe-verify", help="independently check a CAN1 ASC/BLF log against an exported bench")
+    cv.add_argument("capture", type=Path)
+    cv.add_argument("--bundle", type=Path, default=None)
+    cv.add_argument("--report", type=Path, default=None)
+    cv.add_argument("--reference", action="store_true", help="label this as a Python reference self-check")
     sub.add_parser("all", help="clean run, all-faults run, sweep and function matrix (regenerates results/)")
     args = ap.parse_args(argv)
 
@@ -67,6 +75,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "function":
         return cmd_function(args.out)
+    if args.cmd in ("canoe-build", "canoe-verify"):
+        from .canoe_suite import DEFAULT_OUT, export_bundle, verify_capture
+        try:
+            if args.cmd == "canoe-build":
+                report = export_bundle(args.out or DEFAULT_OUT)
+                passed = True
+            else:
+                report = verify_capture(args.bundle or DEFAULT_OUT, args.capture, reference=args.reference)
+                passed = report["passed"]
+            output = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+            if args.cmd == "canoe-verify" and args.report:
+                args.report.parent.mkdir(parents=True, exist_ok=True)
+                args.report.write_text(output, encoding="utf-8")
+            print(output, end="")
+            return 0 if passed else 1
+        except (OSError, ValueError, KeyError) as exc:
+            print(f"CANoe bench error: {exc}", file=sys.stderr)
+            return 2
     rc = cmd_run(0, "none", RESULTS_DIR / "run_seed0_none")
     rc |= cmd_run(0, "all", RESULTS_DIR / "run_seed0_all")
     summary = write_sweep(RESULTS_DIR / "sweep", 20)
