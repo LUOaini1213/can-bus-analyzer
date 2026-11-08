@@ -218,3 +218,27 @@ def test_fault_onset_for_a_gap_in_the_middle():
     sp = [_msg("SPEED", t, encode("SPEED", {"SPEED": 50.0})) for t in ts]
     pre = [_msg("PRE_COLLISION", 0.5 + 0.03 * i, encode("PRE_COLLISION", {"STATE": 1})) for i in range(14)]
     assert fault_onset(decode_log(sp + pre), after=0.5) == pytest.approx(0.5 + 0.02 * 5)
+
+
+def test_bus_contact_verdict_relies_on_zero_distance_radar_frame(runs):
+    """The bus contact verdict needs the plant to keep sending LEAD_INFO with distance 0
+    after impact (a simulator convention).  If the radar stops reporting at contact
+    instead, the verdict must become 'not observable' (None), never 'no contact'."""
+    r, k = runs["CCRs-70"]
+    assert k.contact_bus is True
+    lead_id = load_db().get_message_by_name("LEAD_INFO").frame_id
+    db = load_db()
+    t_zero = min(m.timestamp for m in r.log if m.arbitration_id == lead_id
+                 and db.decode_message(lead_id, m.data)["LEAD_LONG_DIST"] == 0.0)
+    cut = [m for m in r.log if not (m.arbitration_id == lead_id and m.timestamp >= t_zero)]
+    k2 = extract(ClosedLoopResult(r.spec, cut, r.truth, [], []))
+    assert k2.contact_bus is None and k2.contact_true is True
+
+
+def test_standby_first_on_bus_is_the_output_phase():
+    """CCRs-55 / CCRm-70 / CCRm-80 start 'STANDBY > ...' in the KPI table because the ECU
+    leaves OFF before its first PRE_COLLISION frame (random per-scenario output phase)."""
+    r = run(MATRIX["CCRm-70"])
+    log = decode_log(r.log)
+    t_standby = next(t for t, a, b, _ in r.transitions if a == S.OFF and b == S.STANDBY)
+    assert t_standby < log.pre[0][0] and log.pre[0][1] == S.STANDBY
