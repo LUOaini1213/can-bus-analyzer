@@ -1,5 +1,18 @@
 # can-bus-analyzer
 
+[![ci](https://github.com/LUOaini1213/can-bus-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/LUOaini1213/can-bus-analyzer/actions/workflows/ci.yml)
+
+<!-- BEGIN:headline -->
+- **Built:** a project-defined AEB function (6-state table-driven state machine, input supervision, fail-silent FAULT) in closed loop with a toy plant on a python-can virtual bus, frames encoded with the opendbc Toyota DBC; plus a CAN log analyzer (fault injection, cycle-time and latency checks, ASC/BLF round-trip).
+- **Found:** 41 generated test cases, 38 PASS / 3 FAIL (CCRb-12m-2 REQ-03; CCRb-12m-6 REQ-03; DRV-01 REQ-06). Both CCRb 12 m cases collide (true relative impact 1.3 / 21.0 km/h) because the brake is released once ego stops closing on a still-decelerating target. FCW (TTC 2.6 s) and partial brake (TTC 1.6 s) are 957–1021 ms apart in CCRs/CCRm, shorter than the 1.2 s driver reaction Euro NCAP assumes in FCW tests. Fail-silent aborts braking in FLT-02 (true impact 56.5 km/h from 60 km/h).
+- **Limits:** toy 1-D point-mass plant, ideal radar, 100 % overlap only; in-process virtual bus (no arbitration, bit timing or error frames); no real ECU, files never opened in Vector tools; no Euro NCAP score or conformance claimed.
+- **做了什么：** 自己设计的 AEB 功能（六状态表驱动状态机、输入监控、fail-silent 降级）与玩具车辆模型在 python-can 虚拟总线上闭环运行，报文用 opendbc Toyota DBC 编解码；另有总线日志分析器（故障注入、周期与时延检查、ASC/BLF 回读）。
+- **结果：** 生成 41 条测试用例，38 条通过、3 条不通过。CCRb 12 m 两例相撞（"不再接近就释放"对持续减速的目标偏早）；FCW 与部分制动只隔 957–1021 ms，短于 Euro NCAP FCW 测试假定的 1.2 s 驾驶员反应时间；FLT-02 雷达丢失后 fail-silent 中止制动，真值 56.5 km/h 相撞。
+- **局限：** 一维点质量模型、理想雷达、只做 100 % 重叠；进程内虚拟总线（无仲裁、位定时、错误帧）；没接真实 ECU，也没在 Vector 工具里打开过；不声称 Euro NCAP 评分或符合性。
+<!-- END:headline -->
+
+Numbers above are rendered from [results/function/summary.json](results/function/summary.json) by `scripts/readme_check.py` and checked in CI. Longer English summary: [English summary](#english-summary). 上面的数字由脚本从 results/ 生成并在 CI 中校验；以下为中文详述。
+
 两部分，都跑在 python-can 的进程内虚拟总线上，报文用真实量产车 DBC（commaai/opendbc 的 Toyota 定义）编解码：
 
 1. **AEB 功能设计与功能测试**：写了一个 AEB 功能（OFF / STANDBY / FCW / PARTIAL_BRAKE / FULL_BRAKE / FAULT 六状态，表驱动状态机），带输入监控（超时 + checksum/DLC/范围校验）和降级策略；功能节点、被控对象（玩具车辆模型）和记录节点三方挂在同一条虚拟总线上闭环运行。按 Euro NCAP AEB Car-to-Car 协议 v3.0.2 的 CCRs / CCRm / CCRb 场景类型（参数来源逐条标注）加上无威胁、驾驶员干预、故障、主开关关闭场景组成场景矩阵；功能 KPI 只从总线日志解码得出，再与仿真真值对比；功能测试用例表由运行矩阵自动生成（含实际结果和 PASS/FAIL）。
@@ -122,7 +135,7 @@ armed = TTC defined AND v_min_kph <= ego speed <= v_max_kph AND accelerator < ga
 
 ## 功能 KPI（每个场景，全部从总线日志解码得出）
 
-列说明：TTC@FCW / TTC@brake 的"bus"是该事件帧之前最近一帧有效 LEAD_INFO 算出的 TTC，"true"是仿真器在该帧时刻的物理 TTC；碰撞与碰撞速度的总线估计 = 最后一帧非零距离的雷达帧按恒速外推到距离为 0 的时刻，取该时刻之前最近的 SPEED；fault→FAULT 的总线值 = 从总线上看到的故障起点（第一帧坏帧，或第一个错过的周期）到第一帧 PCS_INDICATOR = 2，真值 = 从第一帧被注入的帧到 ECU 内部进入 FAULT。
+列说明：TTC@FCW / TTC@brake 的"bus"是该事件帧之前最近一帧有效 LEAD_INFO 算出的 TTC，"true"是仿真器在该帧时刻的物理 TTC；碰撞与碰撞速度的总线估计 = 最后一帧非零距离的雷达帧按恒速外推到距离为 0 的时刻，取该时刻之前最近的 SPEED；fault→FAULT 的总线值 = 从总线上看到的故障起点（第一帧坏帧，或第一个错过的周期）到第一帧 PCS_INDICATOR = 2，真值 = 从第一帧被注入的帧到 ECU 内部进入 FAULT。总线上的"contact"判定以雷达报出距离 0 的 LEAD_INFO 帧为触发：玩具被控对象在碰撞后把车距钳到 0 并继续发送雷达帧（仿真约定，真实雷达不一定这样）；如果雷达在碰撞时停发，判定变为"不可观测"（n/a）而不是"无碰撞"（`tests/test_function_kpi.py` 有对应用例）。由于外推误差，"contact yes"的行也可能出现负的总线相对碰撞速度（见下文 CCRs-60）。
 
 <!-- BEGIN:kpi -->
 | scenario | v0 km/h | TTC@FCW bus / true (s) | TTC@brake bus / true (s) | TTC@full bus (s) | FCW→brake (ms) | contact | v_rel impact bus / true (km/h) | fault→FAULT bus / true (ms) | states on bus |
@@ -171,6 +184,8 @@ armed = TTC defined AND v_min_kph <= ego speed <= v_max_kph AND accelerator < ga
 
 Bus minus truth: TTC at FCW 0.01 to 0.07 s (n=35); TTC at brake request 0.00 to 0.08 s (n=35); impact speed -4.42 to 0.55 km/h (n=11); fault reaction 28.0, 14.0, 2.0 ms; contact verdict differs in 0 scenario(s); not observable from the bus in FLT-01, FLT-02 (LEAD_INFO stopped; the simulator reports contact there).
 <!-- END:kpi -->
+
+CCRs-55、CCRm-70、CCRm-80 在总线上从 STANDBY 开始（其余行从 OFF 开始）：每个场景的输出报文相位是随机的，这三例 ECU 在第一帧 PRE_COLLISION 发出之前已经由 OFF 进入 STANDBY。REQ-10 不要求序列里出现 OFF，所以不影响判定。
 
 ## 功能测试用例（运行矩阵生成）
 
@@ -364,6 +379,8 @@ DLC / Checksum 不通过的帧不解码；范围不通过的帧不参与时延�
 
 ## 运行
 
+Python 3.11（CI 用的版本；`requirements.txt` 钉了 python-can 4.6.1、cantools 45.0.0、pytest 9.1.1）。Windows 与 Linux 均可。
+
 ```bash
 python -m venv .venv
 # Windows: .venv\Scripts\activate    Linux/macOS: source .venv/bin/activate
@@ -396,7 +413,7 @@ results/           脚本生成的报告、CSV（ASC/BLF 日志不入库）
 
 **Part 1 – AEB function design and functional test.** A project-defined AEB function (states OFF / STANDBY / FCW / PARTIAL_BRAKE / FULL_BRAKE / FAULT) with a table-driven state machine (TTC thresholds, ego-speed window, accelerator/brake-pedal override, hysteresis and minimum dwell; all thresholds are project design choices, not vendor values), input supervision (timeout > 3 cycles, 2 consecutive DLC/checksum/range errors) and a fail-silent degradation strategy (FAULT inhibits warning and automatic braking, latched until the inputs have been valid for 1 s). The function, a toy point-mass plant and a logger are three nodes on one python-can virtual bus in closed loop. The scenario matrix uses the CCRs / CCRm / CCRb scenario types; VUT speed ranges, the CCRb speed / target deceleration / headway combinations and the T0 definition were read from the Euro NCAP AEB Car-to-Car test protocol v3.0.2 (sections cited above), while the CCRm target speed, 100 % overlap, the no-threat / override / fault / main-switch-off scenarios and every pass criterion are project settings. No Euro NCAP score or conformance is claimed. KPIs (TTC at FCW / brake request / full brake, FCW-to-brake delay, contact and impact speed, false activations, fault-to-degradation time) are extracted from the decoded bus log only and compared with simulator truth. A functional test-case catalogue (ID, requirement, preconditions, stimulus, expected state sequence, pass criteria, actual result, PASS/FAIL) is generated by running the matrix: 38 of 41 pass. The failures are reported, not tuned away: both CCRb 12 m cases collide (in the −2 m/s² case the brake is released when ego matches the decelerating target and re-engages too late), and the 1.2 s driver reaction used in Euro NCAP FCW tests is longer than the ~1 s between this design's FCW and partial-brake thresholds. An A/B run shows that releasing the brake on TTC hysteresis would add four low-speed CCRs collisions. Bus-only KPIs cannot see a collision once the radar message is lost. CAN FD is not implemented.
 
-**Part 2 – bus analysis.** Synthetic AEB scenario encoded with a real opendbc Toyota DBC, replayed over python-can's in-process virtual bus with switchable faults (drops, jitter, delays, out-of-range values, wrong DLC, rolling-counter and checksum errors, stuck signal). A cantools-based analyzer reports cycle-time statistics, signal checks and the trigger→brake-request / brake-pressure latency against simulator ground truth. Traffic is exported to ASC and BLF with python-can and read back frame by frame. Classic CAN only; no CAN FD / FlexRay; files not opened in Vector tools. A 20-seed sweep measures event-level recall per fault intensity, spurious findings caused by other faults, and how the latency measurement error depends on bus jitter: the dominant error is the 50 ms radar-frame sampling of the trigger, not jitter. Hand-written mutation testing (scripts/mutation_test.py) checks that the tests fail when any detector is broken or disabled. All README numbers are generated and checked by a test.
+**Part 2 – bus analysis.** Synthetic AEB scenario encoded with a real opendbc Toyota DBC, replayed over python-can's in-process virtual bus with switchable faults (drops, jitter, delays, out-of-range values, wrong DLC, rolling-counter and checksum errors, stuck signal). A cantools-based analyzer reports cycle-time statistics, signal checks and the trigger→brake-request / brake-pressure latency against simulator ground truth. Traffic is exported to ASC and BLF with python-can and read back frame by frame. Classic CAN only; no CAN FD / FlexRay; files not opened in Vector tools. A 20-seed sweep measures event-level recall per fault intensity, spurious findings caused by other faults, and how the latency measurement error depends on bus jitter: the dominant error is the 50 ms radar-frame sampling of the trigger, not jitter. Hand-written mutation testing (scripts/mutation_test.py) checks that the tests fail when any detector is broken or disabled. Every number in the generated README blocks (headline and result tables) is rendered from results/, and the result numbers quoted in the Part 1 prose and in this summary are checked against results/ by scripts/readme_check.py; design parameters and the qualitative reading of the Part 2 sweeps are not machine-checked.
 
 ## License
 

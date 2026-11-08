@@ -14,6 +14,8 @@ jobs:
           rm -rf results
           python -m canbus_analyzer all
           python scripts/mutation_test.py
+      - name: Regenerated results must equal the committed ones
+        run: git diff --exit-code -- results README.md
       - name: README numbers must match regenerated results
         run: python scripts/readme_check.py
       - run: python -m pytest -q
